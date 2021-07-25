@@ -1,5 +1,4 @@
-
-
+(load "clay.lisp")
 
 (defmacro nlet (n letargs &rest body)
   `(labels ((,n ,(mapcar #'car letargs)
@@ -14,23 +13,37 @@
             1
             (* n (fact (1- n))))))
 
-(nlet-fact 5)
+
+(defun g!-symbol-p (s)
+  (and (symbolp s)
+       (> (length (symbol-name s)) 2)
+       (string= (symbol-name s)
+                "G!"
+                :start1 0
+                :end1 2)))
 
 
 
-(macroexpand '(nlet fact
-       ((n n))
-       (if (zerop n)
-           1
-           (* n (fact (1- n))))))
+(defmacro defmacro/g! (name args &rest body)
+  (let ((syms (remove-duplicates
+               (remove-if-not #'g!-symbol-p
+                              (flatten body)))))
+    `(defmacro ,name ,args
+       (let ,(mapcar
+              (lambda (s)
+                `(,s (gensym ,(subseq
+                               (symbol-name s)
+                               2))))
+              syms)
+         ,@body))))
 
-;; question 1 how does it work flopping the outer form, in this case the mapcar on line 5
-;; I guess it means start running the code at this point
 
-;; question 2, explore cadr in thise case
-;; we map over each of the bindings, so the individuall mapped binding is '(n n)
-;; cdr would get (n), cadr will get just n
-;; and then because we mapcar'd we are returned a list, and we need ,@ to "explode" it
+(defmacro/g! nif (expr pos zero neg)
+  `(let ((,g!result ,expr))
+     (cond ((plusp ,g!result) ,pos)
+           ((zerop ,g!result) ,zero)
+           (t ,neg))))
 
+(nif 25 'pos 'zero 'neg)
 
-(mapcar #'cadr '((n n)))
+(gensym "result")

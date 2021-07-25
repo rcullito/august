@@ -7,6 +7,8 @@
   ;; values returns the objects as multiple values
   (values (intern (apply #'mkstr args))))
 
+(symb '1 '+)
+
 (defun group (source n)
   (if (zerop n)
       (error "zero length"))
@@ -21,6 +23,19 @@
                         ;; front of the list, so we need to reverse
                         (cons source acc))))))
     (if source (rec source nil) nil)))
+
+
+
+(defun flatten (x)
+  (labels ((rec (x acc)
+             (cond ((null x) acc)
+                   ((atom x) (cons x acc))
+                   (t (rec
+                       (car x)
+                       (rec (cdr x) acc)))))) ;; beware, double call to rec within one form!
+    (rec x nil))) 
+
+(flatten '(1 2 (3 4) 5))
 
 (defun block-scanner (trigger-string)
   (let* ((trig (coerce trigger-string 'list))
@@ -41,11 +56,6 @@
     (lambda () (incf counter))))
 
 
-(funcall *counter*)
 
-(multiple-value-bind (a b)
-    (let ((counter 0))
-      (values
-       (lambda () (incf counter))
-       (lambda () (decf counter))))
-  (funcall b))
+
+
