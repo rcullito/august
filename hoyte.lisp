@@ -131,8 +131,8 @@
 
 
 (defun defunits-chaining (u units prev)
-  (let ((spec (find u units :key #'car))
-        (chain (cadr spec)))
+  (let* ((spec (find u units :key #'car))
+         (chain (cadr spec)))
     (if (listp chain)
         (* (car chain) ;; the second multiplication is about expanding out hours to minutes, etc...
            ;; all the way to the base unit
@@ -155,6 +155,28 @@
                          (group units 2))
                       nil)))
                (group units 2))))))
+
+;; our macro allows the user to make a custom macro
+;; that itself will perform a unit calculation
+;; ie defunits distance  => unit-of-distance
+
+
+(defunits time s
+  m 60
+  h (60 m)
+  d (24 h))
+
+(unit-of-time 3 m)
+
+
+(defunits distance m
+  km 1000
+  cm 1/100
+  mm (1/10 cm))
+
+(unit-of-distance 300 cm)
+
+(unit-of-distance 3/4 km)
 
 (group '(km 1000
          cm 1/100) 2)
