@@ -55,7 +55,28 @@
   (let ((counter 0))
     (lambda () (incf counter))))
 
+(do ((x 0 (+ 2 x))
+   (y 20 ( - y 2)))
+   ((= x y)(- x y))
+   (format t "~% x = ~d  y = ~d" x y)
+)
 
 
+
+(defun segment-reader (stream ch n)
+  (if (> n 0)
+      (let ((chars))
+        (do ((curr (read-char stream) ;; first value, how to get next value
+                   (read-char stream))) ;; varlist
+            ((char= ch curr)) ;; endlist, end concidtion, whatever we are reading in matches the delim
+          (push curr chars))
+        (cons (coerce (nreverse chars) 'string)
+              (segment-reader stream ch (- n 1))))))
+
+
+(segment-reader t #\/ 3)
+
+
+(char= #\a #\b)
 
 
