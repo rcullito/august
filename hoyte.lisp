@@ -1,39 +1,4 @@
-(defun mkstr (&rest args)
-  (with-output-to-string (s)
-    (dolist (a args)
-      (print a s))))
-
-(defun symb (&rest args)
-  ;; values returns the objects as multiple values
-  (values (intern (apply #'mkstr args))))
-
-(symb '1 '+)
-
-(defun group (source n)
-  (if (zerop n)
-      (error "zero length"))
-  (labels ((rec (source acc)
-                 (let ((rest (nthcdr n source)))
-                   (if (consp rest)
-                       (rec rest (cons ;; so we are cons'ing the next 2, say, and then running
-                                       ;; through the entire source again
-                                  (subseq source 0 n)
-                                  acc))
-                       (nreverse ;; we have been cons'ing later elements to the
-                        ;; front of the list, so we need to reverse
-                        (cons source acc))))))
-    (if source (rec source nil) nil)))
-
-
-
-(defun flatten (x)
-  (labels ((rec (x acc)
-             (cond ((null x) acc)
-                   ((atom x) (cons x acc))
-                   (t (rec
-                       (car x)
-                       (rec (cdr x) acc)))))) ;; beware, double call to rec within one form!
-    (rec x nil))) 
+(load "prerequisites.lisp")
 
 
 (defun block-scanner (trigger-string)
@@ -61,7 +26,6 @@
 )
 
 
-
 (defun segment-reader (stream ch n)
   (if (> n 0)
       (let ((chars))
@@ -72,12 +36,10 @@
         (cons (coerce (nreverse chars) 'string)
               (segment-reader stream ch (- n 1))))))
 
-
 (defmacro nlet (n letargs &rest body)
   `(labels ((,n ,(mapcar #'car letargs)
               ,@body))
      (,n ,@(mapcar #'cadr letargs))))
-
 
 (defun nlet-fact (n)
   (nlet fact
@@ -87,13 +49,6 @@
             (* n (fact (1- n))))))
 
 
-(defun g!-symbol-p (s)
-  (and (symbolp s)
-       (> (length (symbol-name s)) 2)
-       (string= (symbol-name s)
-                "G!"
-                :start1 0
-                :end1 2)))
 
 
 
@@ -110,18 +65,22 @@
               syms)
          ,@body))))
 
-(defun o!-symbol-p (s)
-  (and (symbolp s)
-       (> (length (symbol-name s)) 2)
-       (string= (symbol-name s)
-                "O!"
-                :start1 0
-                :end1 2)))
 
-(defun o!-symbol-to-g!-symbol (s)
-  (symb "G!"
-        (subseq (symbol-name s) 2)))
+(defmacro defmacro! (name args &rest body)
+  (let* ((os (remove-if-not #'o!-symbol-p args))
+         (gs (mapcar #'o!-symbol-to-g!-symbol os)))
+    `(defmacro/g! ,name ,args
+       `(let ,(mapcar #'list (list ,@gs) (list ,@os))
+          ,(progn ,@body)))))
 
+
+(defmacro! square (o!x)
+  `(* ,g!x ,g!x))
+
+(macroexpand '(square (inc x)))
+
+(defvar x 4)
+(square (incf x))
 
 
 `(football-game
@@ -154,13 +113,13 @@
 '(b c d)
 
 
-;; (defmacro/g! nif (expr pos zero neg)
-;;   `(let ((,g!result ,expr))
-;;      (cond ((plusp ,g!result) ,pos)
-;;            ((zerop ,g!result) ,zero)
-;;            (t ,neg))))
+(defmacro/g! nif (expr pos zero neg)
+  `(let ((,g!result ,expr))
+     (cond ((plusp ,g!result) ,pos)
+           ((zerop ,g!result) ,zero)
+           (t ,neg))))
 
-;; (nif 25 'pos 'zero 'neg)
+
 
 ;; (gensym "result")
 
@@ -171,3 +130,31 @@
 ;; (char= #\a #\b)
 
 
+(defun defunits-chaining (u units prev)
+  (let ((spec (find u units :key #'car))
+        (chain (cadr spec)))
+    (if (listp chain)
+        (* (car chain) ;; the second multiplication is about expanding out hours to minutes, etc...
+           ;; all the way to the base unit
+           (defunits-chaining (cadr chain) units (cons u prev)))
+        chain)))
+
+(defmacro! defunits (quantity base-unit &rest units)
+  `(defmacro ,(symb 'unit-of- quantity) (,g!val ,g!un)
+     `(* ,,g!val ;; the first multiplication is about the quanity supplied, ie 8 furlongs
+         ,(case ,g!un
+            ((,base-unit) 1)
+            ,@(mapcar
+               (lambda (x)
+                 `((,(car x)) ;; will put for instance km alongside m
+                   ;; what do actually do with teh value falls to defunits
+                   ,(defunits-chaining
+                        (car x)
+                        (cons
+                         `(,base-unit 1)
+                         (group units 2))
+                      nil)))
+               (group units 2))))))
+
+(group '(km 1000
+         cm 1/100) 2)
