@@ -73,110 +73,72 @@
        `(let ,(mapcar #'list (list ,@gs) (list ,@os))
           ,(progn ,@body)))))
 
-
-(defmacro! square (o!x)
-  `(* ,g!x ,g!x))
-
-(macroexpand '(square (inc x)))
-
-(defvar x 4)
-(square (incf x))
+ (tagbody
+   (setq val 2)
+   (go lp)
+   (incf val 3)
+  lp (incf val 4))
 
 
-`(football-game
- (game-started-at
-  #.(get-internal-real-time))
- (coin-flip
-  #.(if (zerop (random 2)) 'heads 'tails)))
+(find 'a
+      '(((a b) (c d)) ((c d) (b a)))
+      :key #'cadadr)
 
+(defmacro cxr% (x tree)
+  (if (null x)
+      tree
+      `(,(cond
+           ((eq 'a (cadr x)) 'car)
+           ((eq 'd (cadr x)) 'cdr)
+           (t (error "Non A/D symbol")))
+        ,(if (= 1 (car x)) ;; so if it is just one car, we can move on to expanding the 
+             ;; cdrs' because we already have our car "expanded" in front
+             ;; if we were already on the cdr, then cddr in this case will get us to nil
+             ;; and a return off the tree on the next recursive call. w00t
+             `(cxr% ,(cddr x) ,tree)
+             `(cxr% ,(cons (- (car x) 1) (cdr x)) ,tree)))))
 
-`(football-game
- (game-started-at
-  ,(get-internal-real-time))
- (coin-flip
-  ,(if (zerop (random 2)) 'heads 'tails)))
+(defun eleventh (x)
+  (cxr% (1 a 10 d) x))
 
+(cddr '(1 a 10 d))
 
+(cddr '(10 d))
 
+(macroexpand '(cxr% (1 a 10 d) x))
 
-(let ((s 'hello))
-  `(,s world))
+(walker:macroexpand-all
+ '(cxr% (1 a 2 d) some-list))
 
-(let ((s '(b c d)))
-  `(a . ,s))
-
-
-(let ((s '(b c d)))
-  `(a ,@s e))
-
-
-'(b c d)
-
-
-(defmacro/g! nif (expr pos zero neg)
-  `(let ((,g!result ,expr))
-     (cond ((plusp ,g!result) ,pos)
-           ((zerop ,g!result) ,zero)
-           (t ,neg))))
+(eleventh '(1 2 3 4 5 6 7 8 9 10 11 12 13))
 
 
 
-;; (gensym "result")
+(defmacro! dlambda (&rest ds)
+  `(lambda (&rest ,g!args)
+     (case (car ,g!args)
+       ,@(mapcar
+          (lambda (d) ;; d is like the row
+            `(,(if (eq t (car d))
+                   t
+                   (list (car d))) ;; basically the matching part of our case
+              (apply (lambda ,@(cdr d)) ;; will give both the args and the function body
+                     ,(if (eq t (car d))
+                          g!args ;; no idea what this last bit does
+                          `(cdr ,g!args)))))
+          ds))))
 
 
-;; (segment-reader t #\/ 3)
+(setf (symbol-function 'count-test)
+  (let ((count 0))
+    (dlambda
+     (:inc () (incf count))
+     (:dec () (decf count)))))
 
+(count-test :inc)
 
-;; (char= #\a #\b)
+(count-test :dec)
 
-
-(defun defunits-chaining (u units prev)
-  (let* ((spec (find u units :key #'car))
-         (chain (cadr spec)))
-    (if (listp chain)
-        (* (car chain) ;; the second multiplication is about expanding out hours to minutes, etc...
-           ;; all the way to the base unit
-           (defunits-chaining (cadr chain) units (cons u prev)))
-        chain)))
-
-(defmacro! defunits (quantity base-unit &rest units)
-  `(defmacro ,(symb 'unit-of- quantity) (,g!val ,g!un)
-     `(* ,,g!val ;; the first multiplication is about the quanity supplied, ie 8 furlongs
-         ,(case ,g!un
-            ((,base-unit) 1)
-            ,@(mapcar
-               (lambda (x)
-                 `((,(car x)) ;; will put for instance km alongside m
-                   ;; what do actually do with teh value falls to defunits
-                   ,(defunits-chaining
-                        (car x)
-                        (cons
-                         `(,base-unit 1)
-                         (group units 2))
-                      nil)))
-               (group units 2))))))
-
-;; our macro allows the user to make a custom macro
-;; that itself will perform a unit calculation
-;; ie defunits distance  => unit-of-distance
-
-
-(defunits time s
-  m 60
-  h (60 m)
-  d (24 h))
-
-(unit-of-time 3 m)
-
-
-(defunits distance m
-  km 1000
-  cm 1/100
-  mm (1/10 cm))
-
-(unit-of-distance 300 cm)
-
-(unit-of-distance 3/4 km)
-
-(group '(km 1000
-         cm 1/100) 2)
+;; so dlambda really is just creating an anonymous function
+;; yet we have different ways of tapping into this anonymous function
+;; and, most importantly, from this chapter, manipulating the enclosing state/lexical context
