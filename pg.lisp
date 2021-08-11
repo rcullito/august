@@ -144,3 +144,20 @@ eh
 (exclaim '(lions and tigers and bears))
 
 (nconc * '(goodness))
+
+
+(defmacro nil! (x)
+  `(setf ,x nil))
+
+
+(setq names '(rob helen rjc))
+
+(setf (car names) 'rwc)
+
+names
+
+(car names)
+
+(nil! (car names))
+
+names
