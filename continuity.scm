@@ -19,3 +19,18 @@
 
 
 (1+ (frozen 'meadow))
+
+
+
+(define continuation)
+
+(define (foo n)
+  (* (call-with-current-continuation
+      (lambda (cc)
+        (set! continuation cc)
+        (+ n 1)))
+     2))
+
+(foo 3)
+
+(continuation 24)
