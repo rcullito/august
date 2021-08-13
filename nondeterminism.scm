@@ -6,6 +6,11 @@
 ;; solutions one at a time, and if more are needed, will call
 ;; fail to restart the search
 
+;; when we ant all of the possibilities at once, there is no reason
+;; to prefer nondeterministic search
+;; the difference between the two strategies becomes apparent when
+;; the possibilities would represent an infinite number of options
+
 
 (define *paths* ())
 (define failsym '@)
